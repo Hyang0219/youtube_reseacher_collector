@@ -56,14 +56,14 @@ const Popup: React.FC = () => {
         return `## [${formatTimestamp(capture.timestamp)}] ${capture.videoTitle}
 **URL:** ${capture.url}
 
+**Transcript:**
+> ${capture.transcript || '(No transcript available)'}
+
 **Summary:**
 ${capture.summary}
 
 **Enrichment/Intelligence:**
 ${capture.enrichment || 'N/A'}
-
-**Transcript:**
-> ${capture.transcript || '(No transcript available)'}
 
 ---`;
       })
