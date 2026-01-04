@@ -2,15 +2,18 @@
 
 A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" moments from YouTube videos with a single keystroke, complete with context, transcript, and AI-powered enrichment.
 
-![Version](https://img.shields.io/badge/version-0.1.3-blue) ![Status](https://img.shields.io/badge/status-stable-green)
+![Version](https://img.shields.io/badge/version-0.1.4-blue) ![Status](https://img.shields.io/badge/status-stable-green)
 
 ## ✨ Features
 
--   **Instant Capture:** Press `Alt+C` (or `Cmd+Shift+Y` on Mac) to capture the current moment.
--   **Smart Context:** Automatically extracts the last **30 seconds of transcript** leading up to your capture.
+-   **Instant Capture:** Press `⌥ + C` (Option + C on Mac) or `Alt + C` to capture the current moment.
+-   **Smart Context:** Automatically extracts the last **30 seconds of transcript** and **video description** leading up to your capture.
 -   **Robust Fetching:** Uses a multi-layered strategy (Direct Fetch > Innertube API > DOM Scraping) to ensure transcripts are found even on complex video pages.
--   **AI Intelligence:** Uses **GPT-5** (via AI Builder) to intelligently infer "Aha!" moments and generate targeted research queries.
--   **Export:** View captures in the popup, copy as Markdown, or download a full `.md` report.
+-   **Dual-Model Intelligence:** 
+    -   **English:** Uses **Gemini 2.5 Pro** for deep reasoning and structured insights.
+    -   **Original Language:** Uses **DeepSeek** for fast and accurate summarization.
+-   **Live Progress:** Real-time status updates ("Analysing...") in the popup while AI processing is in progress.
+-   **Multi-Select Export:** Select specific "Aha!" moments to copy as Markdown or download as a `.md` report.
 -   **Privacy First:** All data is stored locally in your browser (`chrome.storage.local`).
 
 ## 🚀 Installation

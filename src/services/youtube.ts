@@ -2,6 +2,7 @@
 export type CapturePayload = {
   videoTitle: string;
   videoUrl: string;
+  videoDescription?: string;
   timestamp: number;
   videoId?: string;
   transcript: string;
@@ -203,6 +204,18 @@ const fetchTranscript = async (videoId?: string): Promise<any[]> => {
 export async function captureContext(): Promise<CapturePayload> {
   const videoTitle =
     document.querySelector('#container h1.title')?.textContent?.trim() || document.title || 'YouTube Video';
+  
+  // Try to capture description (meta tag or expanded description)
+  let videoDescription = 
+    document.querySelector('meta[name="description"]')?.getAttribute('content') ||
+    document.querySelector('#description-inline-expander .ytd-text-inline-expander')?.textContent?.trim() ||
+    '';
+  
+  // Truncate description to avoid huge payload
+  if (videoDescription.length > 500) {
+      videoDescription = videoDescription.slice(0, 500) + '...';
+  }
+
   const videoUrl = window.location.href;
   const timestamp = getTimestamp();
   const videoId = getVideoId();
@@ -218,6 +231,7 @@ export async function captureContext(): Promise<CapturePayload> {
   return {
     videoTitle,
     videoUrl,
+    videoDescription,
     timestamp,
     videoId,
     transcript

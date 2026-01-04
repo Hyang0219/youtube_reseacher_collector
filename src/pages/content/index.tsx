@@ -18,7 +18,9 @@ const ensureContainer = (): HTMLElement => {
   container.style.position = 'fixed';
   container.style.bottom = '1.25rem';
   container.style.right = '1.25rem';
-  container.style.zIndex = '999999';
+  container.style.removeProperty('top');
+  container.style.removeProperty('left');
+  container.style.zIndex = '2147483647'; // Max z-index
   document.body.appendChild(container);
   return container;
 };
@@ -43,10 +45,8 @@ const ContentHost: React.FC = () => {
 
   useEffect(() => {
     const listener = (event: KeyboardEvent) => {
-      const isMac = navigator.platform.toLowerCase().includes('mac');
-      const isCaptureHotkey =
-        (event.altKey && event.key.toLowerCase() === 'c') ||
-        (isMac && event.metaKey && event.shiftKey && event.key.toLowerCase() === 'y');
+      // Use event.code 'KeyC' to handle physical key press, avoiding issue where Option+C produces 'ç'
+      const isCaptureHotkey = event.altKey && event.code === 'KeyC';
 
       if (isCaptureHotkey) {
         event.preventDefault();

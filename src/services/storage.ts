@@ -7,10 +7,12 @@ export type Capture = {
   url: string;
   enrichment?: string;
   transcript?: string;
+  status: 'pending' | 'completed' | 'failed';
 };
 
 export type ApiSettings = {
   aiBuilderToken?: string;
+  targetLanguage?: 'original' | 'english';
   // Deprecated
   llmKey?: string;
   searchKey?: string;

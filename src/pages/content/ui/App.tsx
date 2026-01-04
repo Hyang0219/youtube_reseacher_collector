@@ -15,7 +15,7 @@ const App: React.FC<Props> = ({ onCapture, status }) => {
       >
         {status === 'captured' ? 'Captured!' : 'Capture Idea'}
       </button>
-      <span className="text-[10px] text-slate-300">Alt + C</span>
+      <span className="text-[10px] text-slate-300">⌥ + C</span>
     </div>
   );
 };
