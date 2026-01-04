@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Aha Catcher",
+  "version": "0.1.2",
+  "description": "Capture fleeting ideas on YouTube with a single click.",
+  "permissions": ["storage", "activeTab", "scripting"],
+  "host_permissions": [
+    "*://*.youtube.com/*",
+    "https://space.ai-builders.com/*"
+  ],
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "YouTube Aha Catcher"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": ["https://www.youtube.com/*"],
+      "js": ["mainWorld.js"],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    }
+  ]
+}

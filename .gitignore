@@ -1,0 +1,19 @@
+# .gitignore
+node_modules
+dist
+.DS_Store
+.env
+/tmp
+.idea
+*.log
+.env
+
+# Testing
+.playwright/
+test-results/
+test_results/
+.test-user-data-*/
+playwright-report/
+blob-report/
+.npm-cache/
+captures.md
