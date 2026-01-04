@@ -11,35 +11,73 @@ import { inferAhaMoment } from '../../services/llm';
 
 const MAX_CAPTURES = 60;
 
-const buildCapture = (payload: CapturePayload, summary: string, enrichment: string): Capture => ({
-  id: `${payload.videoId ?? 'session'}-${Date.now()}`,
+const buildCapture = (
+  payload: CapturePayload,
+  summary: string,
+  enrichment: string,
+  status: 'pending' | 'completed' | 'failed',
+  id?: string
+): Capture => ({
+  id: id || `${payload.videoId ?? 'session'}-${Date.now()}`,
   timestamp: payload.timestamp,
   summary: summary,
   videoTitle: payload.videoTitle,
   url: payload.videoUrl,
   enrichment: enrichment,
-  transcript: payload.transcript
+  transcript: payload.transcript,
+  status: status
 });
 
 const processCapture = async (payload: CapturePayload) => {
   console.info('🧠 [Debug] Received capture payload:', payload);
-  const settings = await loadSettings();
   
-  // Debug: Log settings loaded
-  console.info('🧠 [Debug] Loaded settings. Has Token:', !!settings.aiBuilderToken);
-
-  const aha = await inferAhaMoment(payload.transcript, payload.videoTitle, settings);
-  console.info('🧠 [Debug] LLM Result:', aha);
-
-  const enrichment = await enrichWithSearch(aha.question ?? aha.summary, settings);
+  // 1. Save Pending State
+  const pendingId = `${payload.videoId ?? 'session'}-${Date.now()}`;
+  const pendingEntry = buildCapture(payload, 'Processing...', 'Waiting for AI intelligence...', 'pending', pendingId);
   
-  const entry = buildCapture(payload, aha.summary, enrichment);
-  
-  const existing = await loadCaptures();
-  const next = [entry, ...existing].slice(0, MAX_CAPTURES);
-  
+  let existing = await loadCaptures();
+  let next = [pendingEntry, ...existing].slice(0, MAX_CAPTURES);
   await saveCaptures(next);
-  console.info('🧠 [Debug] Capture saved to storage. Total count:', next.length);
+  console.info('🧠 [Debug] Saved PENDING capture.');
+
+  try {
+    const settings = await loadSettings();
+    
+    // Debug: Log settings loaded
+    console.info('🧠 [Debug] Loaded settings. Has Token:', !!settings.aiBuilderToken);
+
+    const aha = await inferAhaMoment(payload.transcript, payload.videoTitle, payload.videoDescription, settings);
+    console.info('🧠 [Debug] LLM Result:', aha);
+
+    const searchResults = await enrichWithSearch(aha.question ?? aha.summary, settings);
+    
+    // Combine AI Analysis (Core Topic, Background, Follow-up) with Web Search Results
+    const fullEnrichment = `${aha.analysis}\n\n### Web Search Intelligence\n${searchResults}`;
+    
+    // 2. Update to Completed State
+    const completedEntry = buildCapture(payload, aha.summary, fullEnrichment, 'completed', pendingId);
+    
+    // Reload captures to avoid race conditions (in case user deleted something while processing)
+    existing = await loadCaptures();
+    
+    // Replace the pending entry with the completed one
+    next = existing.map(c => c.id === pendingId ? completedEntry : c);
+    
+    // If somehow the pending entry was deleted, prepend the new one
+    if (!next.find(c => c.id === pendingId)) {
+        next = [completedEntry, ...next].slice(0, MAX_CAPTURES);
+    }
+    
+    await saveCaptures(next);
+    console.info('🧠 [Debug] Updated capture to COMPLETED.');
+  } catch (error) {
+      console.error('🧠 [Debug] Processing failed:', error);
+      const failedEntry = buildCapture(payload, 'Processing Failed', String(error), 'failed', pendingId);
+      
+      existing = await loadCaptures();
+      next = existing.map(c => c.id === pendingId ? failedEntry : c);
+      await saveCaptures(next);
+  }
 };
 
 // Handle messages
