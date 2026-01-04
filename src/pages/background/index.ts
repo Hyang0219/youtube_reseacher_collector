@@ -11,13 +11,13 @@ import { inferAhaMoment } from '../../services/llm';
 
 const MAX_CAPTURES = 60;
 
-const buildCapture = (payload: CapturePayload, note: string): Capture => ({
+const buildCapture = (payload: CapturePayload, summary: string, enrichment: string): Capture => ({
   id: `${payload.videoId ?? 'session'}-${Date.now()}`,
   timestamp: payload.timestamp,
-  summary: note,
+  summary: summary,
   videoTitle: payload.videoTitle,
   url: payload.videoUrl,
-  enrichment: note,
+  enrichment: enrichment,
   transcript: payload.transcript
 });
 
@@ -28,15 +28,12 @@ const processCapture = async (payload: CapturePayload) => {
   // Debug: Log settings loaded
   console.info('🧠 [Debug] Loaded settings. Has Token:', !!settings.aiBuilderToken);
 
-  const aha = await inferAhaMoment(payload.transcript, settings);
+  const aha = await inferAhaMoment(payload.transcript, payload.videoTitle, settings);
   console.info('🧠 [Debug] LLM Result:', aha);
 
   const enrichment = await enrichWithSearch(aha.question ?? aha.summary, settings);
   
-  const note = `${aha.summary}
-
-${enrichment}`;
-  const entry = buildCapture(payload, note);
+  const entry = buildCapture(payload, aha.summary, enrichment);
   
   const existing = await loadCaptures();
   const next = [entry, ...existing].slice(0, MAX_CAPTURES);

@@ -6,6 +6,17 @@ export async function enrichWithSearch(query: string, settings: ApiSettings): Pr
     return 'No AI Builder token available; skipping enrichment.';
   }
 
+  // Prevent searching for generic fallback questions which lead to garbage results
+  const genericQueries = [
+      'what should i explore next',
+      'describe the idea in one sentence',
+      'what is the main topic',
+      'captured a thought while watching a youtube video'
+  ];
+  if (genericQueries.some(g => query.toLowerCase().includes(g))) {
+      return 'Enrichment skipped (Generic/Fallback query generated).';
+  }
+
   try {
     const response = await fetch('https://space.ai-builders.com/backend/v1/search/', {
       method: 'POST',
