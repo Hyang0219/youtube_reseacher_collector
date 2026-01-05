@@ -49,10 +49,11 @@ const processCapture = async (payload: CapturePayload) => {
     const aha = await inferAhaMoment(payload.transcript, payload.videoTitle, payload.videoDescription, settings);
     console.info('🧠 [Debug] LLM Result:', aha);
 
-    const searchResults = await enrichWithSearch(aha.question ?? aha.summary, settings);
+    // Skip Web Search (User requested removal of raw search results)
+    // const searchResults = await enrichWithSearch(aha.question ?? aha.summary, settings, payload.videoUrl);
     
-    // Combine AI Analysis (Core Topic, Background, Follow-up) with Web Search Results
-    const fullEnrichment = `${aha.analysis}\n\n### Web Search Intelligence\n${searchResults}`;
+    // Just use the AI Analysis
+    const fullEnrichment = aha.analysis;
     
     // 2. Update to Completed State
     const completedEntry = buildCapture(payload, aha.summary, fullEnrichment, 'completed', pendingId);
