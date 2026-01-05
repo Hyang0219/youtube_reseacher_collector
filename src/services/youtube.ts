@@ -8,6 +8,21 @@ export type CapturePayload = {
   transcript: string;
 };
 
+const TRANSCRIPT_CACHE_TTL_MS = 5 * 60 * 1000;
+const TIMESTAMP_MARGIN_SECONDS = 5;
+
+type TranscriptCacheEntry = {
+  events: any[];
+  fetchedAt: number;
+  timestamp: number;
+};
+
+const transcriptCache = new Map<string, TranscriptCacheEntry>();
+const cacheKey = (videoId?: string) => videoId ?? 'unknown-video';
+const cacheIsFresh = (entry: TranscriptCacheEntry, timestamp: number) =>
+  Date.now() - entry.fetchedAt < TRANSCRIPT_CACHE_TTL_MS &&
+  Math.abs(timestamp - entry.timestamp) <= TIMESTAMP_MARGIN_SECONDS;
+
 const getVideoId = (): string | undefined => {
   const params = new URLSearchParams(window.location.search);
   const id = params.get('v');
@@ -47,7 +62,7 @@ const buildTranscriptWindow = (events: any[], currentTime: number): string => {
     .trim();
 };
 
-const fetchTranscriptViaInnertube = (videoId: string): Promise<{ events: any[], captionTracks?: any[] }> => {
+export const fetchTranscriptViaInnertube = (videoId: string): Promise<{ events: any[], captionTracks?: any[] }> => {
   return new Promise((resolve) => {
     const handler = (event: Event) => {
       window.removeEventListener('YAC_TranscriptResponse', handler);
@@ -74,7 +89,7 @@ const fetchTranscriptViaInnertube = (videoId: string): Promise<{ events: any[], 
   });
 };
 
-const fetchCaptionTrack = async (url: string): Promise<any[]> => {
+export const fetchCaptionTrack = async (url: string): Promise<any[]> => {
     try {
         // First try direct fetch (avoids proxy overhead, shares origin session)
         try {
@@ -117,7 +132,7 @@ const parseXmlTranscript = (xml: string): any[] => {
 };
 
 
-const scrapeTranscriptFromDOM = async (): Promise<any[]> => {
+export const scrapeTranscriptFromDOM = async (): Promise<any[]> => {
   console.log('[YAC] Attempting DOM Scraping...');
   
   // 1. Try to find button and click if not open
@@ -168,11 +183,17 @@ const scrapeTranscriptFromDOM = async (): Promise<any[]> => {
   });
 };
 
-const fetchTranscript = async (videoId?: string): Promise<any[]> => {
+export const transcriptSources = {
+  innertube: fetchTranscriptViaInnertube,
+  captionTrack: fetchCaptionTrack,
+  dom: scrapeTranscriptFromDOM
+};
+
+export async function fetchTranscript(videoId?: string): Promise<any[]> {
   if (!videoId) return [];
 
   // 1. Try Innertube API
-  const { events: innertubeEvents, captionTracks } = await fetchTranscriptViaInnertube(videoId);
+  const { events: innertubeEvents, captionTracks } = await transcriptSources.innertube(videoId);
   if (innertubeEvents.length > 0) return innertubeEvents;
 
   // 1b. Try Caption Tracks fallback (Robust XML Fetch)
@@ -189,16 +210,38 @@ const fetchTranscript = async (videoId?: string): Promise<any[]> => {
           
           console.log('[YAC] Fallback to Caption Track:', enTrack.name?.simpleText || enTrack.languageCode);
           console.log('[YAC] Caption URL:', xmlUrl);
-          const trackEvents = await fetchCaptionTrack(xmlUrl);
+          const trackEvents = await transcriptSources.captionTrack(xmlUrl);
           if (trackEvents.length > 0) return trackEvents;
       }
   }
 
   // 2. Fallback: DOM Automation
-  const domEvents = await scrapeTranscriptFromDOM();
+  const domEvents = await transcriptSources.dom();
   if (domEvents.length > 0) return domEvents;
   
   return [];
+}
+
+const fetchTranscriptWithCache = async (videoId?: string, timestamp = 0): Promise<any[]> => {
+  if (!videoId) {
+    return fetchTranscript(videoId);
+  }
+
+  const key = cacheKey(videoId);
+  const cached = transcriptCache.get(key);
+  if (cached && cacheIsFresh(cached, timestamp)) {
+    return cached.events;
+  }
+
+  const events = await fetchTranscript(videoId);
+  if (events.length > 0) {
+    transcriptCache.set(key, {
+      events,
+      fetchedAt: Date.now(),
+      timestamp
+    });
+  }
+  return events;
 };
 
 export async function captureContext(): Promise<CapturePayload> {
@@ -222,7 +265,7 @@ export async function captureContext(): Promise<CapturePayload> {
   let transcript = '';
   
   try {
-    const events = await fetchTranscript(videoId);
+    const events = await fetchTranscriptWithCache(videoId, timestamp);
     transcript = buildTranscriptWindow(events, timestamp);
   } catch (error) {
     console.warn('Transcript capture failed', error);

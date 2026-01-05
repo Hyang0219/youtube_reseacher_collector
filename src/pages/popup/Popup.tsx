@@ -9,12 +9,7 @@ import {
   saveCaptures,
   saveSettings
 } from '../../services/storage';
-
-const formatTimestamp = (seconds: number): string => {
-  const mins = Math.floor(seconds / 60);
-  const secs = Math.floor(seconds % 60);
-  return `${mins}:${secs.toString().padStart(2, '0')}`;
-};
+import { buildCaptureMarkdown, formatTimestamp } from './markdown';
 
 const defaultCapture: Capture = {
   id: 'placeholder',
@@ -73,33 +68,7 @@ const Popup: React.FC = () => {
     setSelectedIds(next);
   };
 
-  const markdownDump = useMemo(() => {
-    if (captures.length === 0) {
-      return '*No captures yet.*';
-    }
-    
-    const targetCaptures = selectedIds.size > 0 
-      ? captures.filter(c => selectedIds.has(c.id))
-      : captures;
-
-    return targetCaptures
-      .map((capture) => {
-        return `## [${formatTimestamp(capture.timestamp)}] ${capture.videoTitle}
-**URL:** ${capture.url}
-
-**Transcript:**
-> ${capture.transcript || '(No transcript available)'}
-
-**Summary:**
-${capture.summary}
-
-**Enrichment/Intelligence:**
-${capture.enrichment || 'N/A'}
-
----`;
-      })
-      .join('\n\n');
-  }, [captures, selectedIds]);
+  const markdownDump = useMemo(() => buildCaptureMarkdown(captures, selectedIds), [captures, selectedIds]);
 
   const handleCopy = async () => {
     await navigator.clipboard.writeText(markdownDump);
