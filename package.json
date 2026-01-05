@@ -8,6 +8,7 @@
     "dev": "vite",
     "build": "vite build",
     "test:eval": "playwright test tests/eval_loop.spec.ts",
+    "test:unit": "vitest run",
     "preview": "vite preview"
   },
   "dependencies": {
@@ -26,6 +27,8 @@
     "tailwindcss": "3.4.0",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3",
-    "vite": "^7.3.0"
+    "vite": "^7.3.0",
+    "vitest": "^1.4.1",
+    "jsdom": "^22.0.0"
   }
 }
