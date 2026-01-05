@@ -2,7 +2,7 @@
 
 A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" moments from YouTube videos with a single keystroke, complete with context, transcript, and AI-powered enrichment.
 
-![Version](https://img.shields.io/badge/version-0.1.4-blue) ![Status](https://img.shields.io/badge/status-stable-green)
+![Version](https://img.shields.io/badge/version-1.0.0-blue) ![Status](https://img.shields.io/badge/status-stable-green)
 
 ## ✨ Features
 
