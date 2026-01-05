@@ -1,7 +1,7 @@
 // src/services/search.ts
 import { ApiSettings } from './storage';
 
-export async function enrichWithSearch(query: string, settings: ApiSettings): Promise<string> {
+export async function enrichWithSearch(query: string, settings: ApiSettings, currentVideoUrl?: string): Promise<string> {
   if (!settings.aiBuilderToken || !query) {
     return 'No AI Builder token available; skipping enrichment.';
   }
@@ -26,7 +26,7 @@ export async function enrichWithSearch(query: string, settings: ApiSettings): Pr
       },
       body: JSON.stringify({
         keywords: [query],
-        max_results: 2
+        max_results: 5 // Fetch more to allow filtering
       })
     });
     
@@ -36,13 +36,24 @@ export async function enrichWithSearch(query: string, settings: ApiSettings): Pr
     }
 
     const payload = await response.json();
-    // AI Builder Search API returns { queries: [{ keyword: string, response: { results: [...] } }] }
-    // We only sent one keyword, so we check queries[0]
     const tavilyResponse = payload.queries?.[0]?.response;
-    const items = tavilyResponse?.results ?? [];
+    let items = tavilyResponse?.results ?? [];
+
+    // Filter out results that are the video itself (based on URL match)
+    if (currentVideoUrl) {
+        // Simple normalization: remove query params for comparison
+        const cleanCurrent = currentVideoUrl.split('?')[0];
+        items = items.filter((item: any) => {
+            const itemUrl = item.url || '';
+            return !itemUrl.includes(cleanCurrent);
+        });
+    }
+
+    // Take top 2 valid results
+    items = items.slice(0, 2);
 
     if (items.length === 0) {
-      return 'Search returned no results.';
+      return 'Search returned no relevant external results.';
     }
     return items
       .map((item: any) => `• ${item.title ?? 'Result'}: ${item.content ?? item.snippet ?? 'No snippet.'}`)

@@ -43,11 +43,11 @@ Your tasks are to:
 
 ${languageInstruction}
 
-Return the result in the following structured format (Keep it plain text, no markdown bolding for headers):
-Aha Moment: [One-sentence summary]
-Core Topic: [Primary concept or theme]
-Background & Context: [2–4 bullet points explaining relevant background]
-Follow-up Exploration: [2–3 suggested angles for further research]
+Return the result in the following structured format (Keep the headers exactly as written below):
+**Aha Moment:** [One-sentence summary]
+**Core Topic:** [Primary concept or theme]
+**Background & Context:** [2–4 bullet points explaining relevant background]
+**Follow-up Exploration:** [2–3 suggested angles for further research]
 
 Prioritize clarity, factual grounding, and usefulness for research or content ideation. Avoid fluff.`
         },
@@ -89,10 +89,10 @@ ${transcript}`
     const analysisLines: string[] = [];
     
     lines.forEach(line => {
-        if (line.startsWith('Aha Moment:')) {
-            summary = line.replace('Aha Moment:', '').trim();
-        } else if (line.startsWith('Search Query:')) {
-            question = line.replace('Search Query:', '').trim();
+        if (line.startsWith('Aha Moment:') || line.startsWith('**Aha Moment:**')) {
+            summary = line.replace(/\**Aha Moment:\** ?/, '').trim();
+        } else if (line.startsWith('Search Query:') || line.startsWith('**Search Query:**')) {
+            question = line.replace(/\**Search Query:\** ?/, '').trim();
         } else {
             // Collect everything else (Core Topic, Background, Follow-up) into analysis
             analysisLines.push(line);
