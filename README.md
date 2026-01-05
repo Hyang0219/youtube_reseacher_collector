@@ -92,6 +92,11 @@ src/
 │   └── storage.ts     # Local persistence layer
 ```
 
+## 🗂️ Ignored Directories
+
+- `tasks/` contains planning / PRD notes; keep local copies for reference but the files are not distributed with the published extension.
+- `tests/` hosts the local vitest/playwright harnesses; they are intentionally excluded from release bundles.
+
 ## 📝 License
 
 MIT

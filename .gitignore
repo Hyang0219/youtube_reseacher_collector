@@ -18,3 +18,5 @@ blob-report/
 .npm-cache/
 captures.md
 ai_dev_tools/
+tasks/
+tests/
