@@ -12,6 +12,7 @@ A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" 
 -   **Dual-Model Intelligence:** 
     -   **English:** Uses **Gemini 2.5 Pro** for deep reasoning and structured insights.
     -   **Original Language:** Uses **DeepSeek** for fast and accurate summarization.
+-   **Structured Runs:** Each capture now stores the source metadata once plus an ordered list of AI runs (baseline + refinements). Every run records its `mode`, provided intent (or “Not Provided”), summary, background, and follow-ups so you can compare the base insight to every intent-driven rerun without duplicating transcript data.
 -   **Live Progress:** Real-time status updates ("Analysing...") in the popup while AI processing is in progress.
 -   **Multi-Select Export:** Select specific "Aha!" moments to copy as Markdown or download as a `.md` report.
 -   **Privacy First:** All data is stored locally in your browser (`chrome.storage.local`).
@@ -26,7 +27,7 @@ A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" 
 1.  Clone the repository.
 2.  Install dependencies:
     ```bash
-    npm install
+    npm ci
     ```
 3.  Build the extension:
     ```bash
