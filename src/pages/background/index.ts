@@ -6,89 +6,146 @@ import {
   saveCaptures
 } from '../../services/storage';
 import { CapturePayload } from '../../services/youtube';
-import { enrichWithSearch } from '../../services/search';
-import { inferAhaMoment } from '../../services/llm';
+import { generateInsight } from '../../services/llm';
+import { RunMode, StructuredAnalysis } from '../../types/aha';
 
 const MAX_CAPTURES = 60;
+
+type ProcessCaptureOptions = {
+  captureId?: string;
+  mode?: RunMode;
+  userIntent?: string | null;
+  enrichmentOverride?: string;
+};
 
 const buildCapture = (
   payload: CapturePayload,
   summary: string,
-  enrichment: string,
+  structuredAnalysis: StructuredAnalysis | null,
   status: 'pending' | 'completed' | 'failed',
-  id?: string
-): Capture => ({
-  id: id || `${payload.videoId ?? 'session'}-${Date.now()}`,
-  timestamp: payload.timestamp,
-  summary: summary,
-  videoTitle: payload.videoTitle,
-  url: payload.videoUrl,
-  enrichment: enrichment,
-  transcript: payload.transcript,
-  status: status
-});
+  options: ProcessCaptureOptions = {}
+): Capture => {
+  const enrichment =
+    options.enrichmentOverride ??
+    structuredAnalysis?.runs?.[0]?.baseline_enrichment.background_context
+      .slice(0, 2)
+      .join('\n') ??
+    'Enrichment pending.';
 
-const processCapture = async (payload: CapturePayload) => {
+  return {
+    id: options.captureId || `${payload.videoId ?? 'session'}-${Date.now()}`,
+    timestamp: payload.timestamp,
+    summary,
+    videoTitle: payload.videoTitle,
+    videoDescription: payload.videoDescription,
+    videoId: payload.videoId,
+    channelName: payload.channelName ?? null,
+    url: payload.videoUrl,
+    transcript: payload.transcript,
+    enrichment,
+    status,
+    structuredAnalysis: structuredAnalysis ?? undefined,
+    mode: options.mode,
+    userIntent: options.userIntent ?? undefined
+  };
+};
+
+const mergeAnalysisRun = (
+  existing: StructuredAnalysis | undefined,
+  incoming: StructuredAnalysis
+): StructuredAnalysis => {
+  if (!existing) {
+    return incoming;
+  }
+  const newRun = incoming.runs[0];
+  return {
+    ...existing,
+    runs: [...existing.runs, newRun]
+  };
+};
+
+const processCapture = async (payload: CapturePayload, options: ProcessCaptureOptions = {}) => {
   console.info('🧠 [Debug] Received capture payload:', payload);
-  
-  // 1. Save Pending State
-  const pendingId = `${payload.videoId ?? 'session'}-${Date.now()}`;
-  const pendingEntry = buildCapture(payload, 'Processing...', 'Waiting for AI intelligence...', 'pending', pendingId);
-  
+  const mode = options.mode ?? 'baseline';
+  const userIntent = options.userIntent?.trim() || null;
+  const captureId = options.captureId || `${payload.videoId ?? 'session'}-${Date.now()}`;
+
   let existing = await loadCaptures();
-  let next = [pendingEntry, ...existing].slice(0, MAX_CAPTURES);
-  await saveCaptures(next);
+  const existingCapture = existing.find((capture) => capture.id === captureId);
+  const pendingSummary = existingCapture?.summary ?? 'Processing...';
+  const pendingAnalysis = existingCapture?.structuredAnalysis ?? null;
+
+  const pendingEntry = buildCapture(payload, pendingSummary, pendingAnalysis, 'pending', {
+    ...options,
+    captureId,
+    mode,
+    userIntent,
+    enrichmentOverride: existingCapture ? undefined : 'Waiting for AI intelligence...'
+  });
+
+  const pendingList = [pendingEntry, ...existing.filter((capture) => capture.id !== captureId)];
+  await saveCaptures(pendingList.slice(0, MAX_CAPTURES));
   console.info('🧠 [Debug] Saved PENDING capture.');
 
   try {
     const settings = await loadSettings();
-    
-    // Debug: Log settings loaded
     console.info('🧠 [Debug] Loaded settings. Has Token:', !!settings.aiBuilderToken);
 
-    const aha = await inferAhaMoment(payload.transcript, payload.videoTitle, payload.videoDescription, settings);
-    console.info('🧠 [Debug] LLM Result:', aha);
+    const insight = await generateInsight(payload, settings, { mode, userIntent });
+    console.info('🧠 [Debug] LLM Result:', insight);
 
-    // Skip Web Search (User requested removal of raw search results)
-    // const searchResults = await enrichWithSearch(aha.question ?? aha.summary, settings, payload.videoUrl);
-    
-    // Just use the AI Analysis
-    const fullEnrichment = aha.analysis;
-    
-    // 2. Update to Completed State
-    const completedEntry = buildCapture(payload, aha.summary, fullEnrichment, 'completed', pendingId);
-    
-    // Reload captures to avoid race conditions (in case user deleted something while processing)
+    const mergedAnalysis = mergeAnalysisRun(existingCapture?.structuredAnalysis, insight);
+    const completedSummary = existingCapture?.summary ?? mergedAnalysis.summary;
+    const completedEntry = buildCapture(payload, completedSummary, mergedAnalysis, 'completed', {
+      ...options,
+      captureId,
+      mode,
+      userIntent
+    });
+
     existing = await loadCaptures();
-    
-    // Replace the pending entry with the completed one
-    next = existing.map(c => c.id === pendingId ? completedEntry : c);
-    
-    // If somehow the pending entry was deleted, prepend the new one
-    if (!next.find(c => c.id === pendingId)) {
-        next = [completedEntry, ...next].slice(0, MAX_CAPTURES);
+    const completedList = existing.map((capture) => (capture.id === captureId ? completedEntry : capture));
+    if (!completedList.find((capture) => capture.id === captureId)) {
+      completedList.unshift(completedEntry);
     }
-    
-    await saveCaptures(next);
+
+    await saveCaptures(completedList.slice(0, MAX_CAPTURES));
     console.info('🧠 [Debug] Updated capture to COMPLETED.');
   } catch (error) {
-      console.error('🧠 [Debug] Processing failed:', error);
-      const failedEntry = buildCapture(payload, 'Processing Failed', String(error), 'failed', pendingId);
-      
-      existing = await loadCaptures();
-      next = existing.map(c => c.id === pendingId ? failedEntry : c);
-      await saveCaptures(next);
+    console.error('🧠 [Debug] Processing failed:', error);
+    const failedEntry = buildCapture(payload, existingCapture?.summary ?? 'Processing Failed', pendingAnalysis, 'failed', {
+      ...options,
+      captureId,
+      mode,
+      userIntent,
+      enrichmentOverride: `Error: ${String(error)}`
+    });
+
+    existing = await loadCaptures();
+    const failureList = existing.map((capture) => (capture.id === captureId ? failedEntry : capture));
+    await saveCaptures(failureList.slice(0, MAX_CAPTURES));
   }
 };
 
-// Handle messages
 chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.MessageSender, sendResponse: (response?: any) => void) => {
   if (message?.type === 'CAPTURE_TRIGGERED' && message.payload) {
     void processCapture(message.payload as CapturePayload);
     sendResponse({ status: 'queued' });
     return true;
   }
-  
+
+  if (message?.type === 'REFINE_CAPTURE' && message.payload) {
+    const mode = (message.mode as RunMode) ?? 'baseline';
+    const userIntent = typeof message.userIntent === 'string' ? message.userIntent : null;
+    void processCapture(message.payload as CapturePayload, {
+      captureId: message.captureId,
+      mode,
+      userIntent
+    });
+    sendResponse({ status: 'refining' });
+    return true;
+  }
+
   if (message?.type === 'FETCH_TRANSCRIPT' && message.url) {
     console.log('[Background] Proxying fetch for:', message.url);
     fetch(message.url)
@@ -96,9 +153,9 @@ chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.Messa
         if (!resp.ok) throw new Error(`Status ${resp.status}`);
         const text = await resp.text();
         try {
-            return text ? JSON.parse(text) : null;
+          return text ? JSON.parse(text) : null;
         } catch {
-            return text; // Return raw text if not JSON (e.g. XML)
+          return text;
         }
       })
       .then((data) => sendResponse({ success: true, data }))
@@ -106,8 +163,8 @@ chrome.runtime.onMessage.addListener((message: any, sender: chrome.runtime.Messa
         console.warn('[Background] Fetch failed:', error);
         sendResponse({ success: false, error: String(error) });
       });
-    return true; 
+    return true;
   }
-  
+
   return false;
 });

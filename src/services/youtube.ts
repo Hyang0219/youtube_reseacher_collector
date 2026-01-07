@@ -5,6 +5,7 @@ export type CapturePayload = {
   videoDescription?: string;
   timestamp: number;
   videoId?: string;
+  channelName?: string | null;
   transcript: string;
 };
 
@@ -31,6 +32,19 @@ const getVideoId = (): string | undefined => {
   if (!canonical) return undefined;
   const match = canonical.match(/[?&]v=([^&]+)/);
   return match ? match[1] : undefined;
+};
+
+const getChannelName = (): string | null => {
+  const meta =
+    document
+      .querySelector('meta[itemprop="author"], meta[name="author"], meta[property="og:video:tag"]')
+      ?.getAttribute('content')
+      ?.trim();
+  if (meta) return meta;
+  const fallback =
+    document.querySelector('#owner-name a')?.textContent ||
+    document.querySelector('#text-container yt-formatted-string')?.textContent;
+  return fallback?.trim() || null;
 };
 
 const getTimestamp = (): number => {
@@ -263,6 +277,7 @@ export async function captureContext(): Promise<CapturePayload> {
   const timestamp = getTimestamp();
   const videoId = getVideoId();
   let transcript = '';
+  const channelName = getChannelName();
   
   try {
     const events = await fetchTranscriptWithCache(videoId, timestamp);
@@ -277,6 +292,7 @@ export async function captureContext(): Promise<CapturePayload> {
     videoDescription,
     timestamp,
     videoId,
+    channelName,
     transcript
   };
 }
