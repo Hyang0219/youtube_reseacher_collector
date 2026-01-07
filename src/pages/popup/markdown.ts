@@ -1,5 +1,6 @@
 // src/pages/popup/markdown.ts
 import { Capture } from '../../services/storage';
+import { renderAhaMarkdown } from '../../services/templates';
 
 export const formatTimestamp = (seconds: number): string => {
   const mins = Math.floor(seconds / 60);
@@ -20,20 +21,6 @@ export const buildCaptureMarkdown = (captures: Capture[], selectedIds: Set<strin
   }
 
   return targetCaptures
-    .map((capture) => {
-      return `## [${formatTimestamp(capture.timestamp)}] ${capture.videoTitle}
-**URL:** ${capture.url}
-
-**Transcript:**
-> ${capture.transcript || '(No transcript available)'}
-
-**Summary:**
-${capture.summary}
-
-**Enrichment/Intelligence:**
-${capture.enrichment || 'N/A'}
-
----`;
-    })
-    .join('\n\n');
+    .map((capture) => renderAhaMarkdown(capture))
+    .join('\n\n---\n\n');
 };

@@ -1,13 +1,21 @@
 // src/services/storage.ts
+import { RunMode, StructuredAnalysis } from '../types/aha';
+
 export type Capture = {
   id: string;
   timestamp: number;
   summary: string;
   videoTitle: string;
   url: string;
+  videoDescription?: string;
+  videoId?: string;
+  channelName?: string | null;
   enrichment?: string;
   transcript?: string;
   status: 'pending' | 'completed' | 'failed';
+  structuredAnalysis?: StructuredAnalysis;
+  userIntent?: string;
+  mode?: RunMode;
 };
 
 export type ApiSettings = {
@@ -25,7 +33,7 @@ export function loadCaptures(): Promise<Capture[]> {
     return Promise.resolve([]);
   }
   return new Promise((resolve) => {
-    storage.get('captures', (result) => {
+    storage.get<{ captures?: Capture[] }>({ captures: [] }, (result) => {
       resolve(result.captures ?? []);
     });
   });
