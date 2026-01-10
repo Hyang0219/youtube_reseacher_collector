@@ -69,6 +69,12 @@ To verify the extension works correctly (fetches transcripts, handles ads, etc.)
     *   It navigates to a test TED Talk.
     *   It handles cookies and ads automatically.
     *   It triggers a capture and verifies the data integrity.
+3.  **Signed-in profile (required for transcripts)**  
+    The test needs a signed-in Chromium profile. Create or reuse a Chromium `User Data` directory where you're already logged into YouTube, then point the test at it:
+    ```bash
+    PLAYWRIGHT_SIGNED_USER_DATA="/path/to/LoggedInProfile" npm run test:eval
+    ```
+    If `PLAYWRIGHT_SIGNED_USER_DATA` is unset, Playwright will use a temporary profile instead, which works only for the UI flow but not for real transcripts.
 
 ### Test Architecture
 *   **`tests/eval_loop.spec.ts`**: The main test harness. It launches Chrome with the extension loaded, simulating a real user environment.
