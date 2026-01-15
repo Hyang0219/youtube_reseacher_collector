@@ -10,7 +10,6 @@ dist
 
 # Testing
 .playwright/
-test-results/
 test_results/
 .test-user-data-*/
 playwright-report/
@@ -20,4 +19,3 @@ captures.md
 ai_dev_tools/
 tasks/
 tests/
-Default/

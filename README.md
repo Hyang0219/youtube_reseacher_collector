@@ -50,39 +50,6 @@ A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" 
 4.  **Review:** Open the extension popup to see your list of captures.
 5.  **Export:** Click "Copy MD" or "Download" to save your notes.
 
-## 🧪 Automated Testing
-
-This project includes a rigorous automated design loop using **Playwright** to verify functionality.
-
-### Running Tests
-To verify the extension works correctly (fetches transcripts, handles ads, etc.):
-
-1.  Ensure you have Playwright browsers installed:
-    ```bash
-    npx playwright install chromium
-    ```
-2.  Run the evaluation script:
-    ```bash
-    npm run test:eval
-    ```
-    *   This launches a visible Chrome browser.
-    *   It navigates to a test TED Talk.
-    *   It handles cookies and ads automatically.
-    *   It triggers a capture and verifies the data integrity.
-3.  **Signed-in profile (required for transcripts)**  
-    The test needs a signed-in Chromium profile. Create or reuse a Chromium `User Data` directory where you're already logged into YouTube, then point the test at it:
-    ```bash
-    PLAYWRIGHT_SIGNED_USER_DATA="/path/to/LoggedInProfile" npm run test:eval
-    ```
-    If `PLAYWRIGHT_SIGNED_USER_DATA` is unset, Playwright will use a temporary profile instead, which works only for the UI flow but not for real transcripts.
-
-### Test Architecture
-*   **`tests/eval_loop.spec.ts`**: The main test harness. It launches Chrome with the extension loaded, simulating a real user environment.
-*   **Transcript Strategy**: The extension uses a priority queue to fetch captions:
-    1.  **Direct Fetch:** Fetches XML caption tracks directly from the player metadata.
-    2.  **Innertube API:** Intercepts internal YouTube API calls.
-    3.  **DOM Automation:** Falls back to clicking the "Show Transcript" button if APIs fail.
-
 ## 📁 Project Structure
 
 ```
@@ -102,7 +69,7 @@ src/
 ## 🗂️ Ignored Directories
 
 - `tasks/` contains planning / PRD notes; keep local copies for reference but the files are not distributed with the published extension.
-- `tests/` hosts the local vitest/playwright harnesses; they are intentionally excluded from release bundles.
+-- `tests/` hosts the local vitest/playwright harnesses; they are intentionally excluded from release bundles to prevent sensitive test data or hardcoded local paths from being shared.
 
 ## 📝 License
 
