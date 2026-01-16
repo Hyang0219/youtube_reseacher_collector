@@ -89,9 +89,7 @@ const processCapture = async (payload: CapturePayload, options: ProcessCaptureOp
 
   try {
     const settings = await loadSettings();
-    const provider = settings.provider ?? 'ai-builder';
-    const tokenAvailable = Boolean(settings.tokens?.[provider]);
-    console.info('🧠 [Debug] Loaded settings. Provider:', provider, 'Token set:', tokenAvailable);
+    console.info('🧠 [Debug] Loaded settings. Has Token:', !!settings.aiBuilderToken);
 
     const insight = await generateInsight(payload, settings, { mode, userIntent });
     console.info('🧠 [Debug] LLM Result:', insight);

@@ -15,14 +15,7 @@ const NEXT_MODE_SUGGESTIONS: Record<RunMode, RunMode[]> = {
   collector: ['research', 'youtube']
 };
 
-const selectModel = (language?: string): string => {
-  return language === 'english' ? 'gemini-3-flash-preview' : 'deepseek';
-};
-
-const resolveAiBuilderToken = (settings: ApiSettings): string | undefined => {
-  const tokens = settings.tokens as Partial<Record<string, string>> | undefined;
-  return tokens?.['ai-builder'] ?? settings.llmKey;
-};
+const selectModel = (language?: string): string => (language === 'english' ? 'gemini-3-flash-preview' : 'deepseek');
 
 export type InsightOptions = {
   mode?: RunMode;
@@ -56,58 +49,32 @@ export async function generateInsight(
     language: languageCue
   };
 
-  const token = resolveAiBuilderToken(settings);
-
-  if (!token) {
+  if (!settings.aiBuilderToken) {
     return buildFallbackStructuredAnalysis(payload, mode, userIntent, transcriptExcerpt, timestampWindow, languageCue);
   }
 
-  const buildMessages = () => [
-    { role: 'system', content: buildSystemPrompt(mode) },
-    { role: 'user', content: buildUserPrompt(promptContext) }
-  ];
-
-  const messages = buildMessages();
   const requestBody = {
     model: selectModel(settings.targetLanguage),
-    messages
+    messages: [
+      { role: 'system', content: buildSystemPrompt(mode) },
+      { role: 'user', content: buildUserPrompt(promptContext) }
+    ]
   };
 
   try {
-    console.log('[YAC] LLM Provider: ai-builder');
     console.log('[YAC] LLM Request Body:', JSON.stringify(requestBody, null, 2));
     const response = await fetch(JSON_ENDPOINT, {
       method: 'POST',
-      headers:
-        {
-          Authorization: `Bearer ${token}`,
-          'Content-Type': 'application/json'
-        },
+      headers: {
+        Authorization: `Bearer ${settings.aiBuilderToken}`,
+        'Content-Type': 'application/json'
+      },
       body: JSON.stringify(requestBody)
     });
 
-    const responseText = await response.text();
-    if (!response.ok) {
-      console.warn('[YAC] LLM HTTP Error:', response.status, responseText);
-      throw new Error(`LLM request failed: ${response.status} ${response.statusText} ${responseText}`);
-    }
-    if (!responseText) {
-      console.warn('[YAC] Empty LLM response');
-      throw new Error('LLM response was empty.');
-    }
-    let rawPayload;
-    try {
-      rawPayload = JSON.parse(responseText);
-    } catch (error) {
-      console.warn('[YAC] Failed to parse LLM response JSON:', responseText);
-      throw error;
-    }
+    const rawPayload = await response.json();
     console.log('[YAC] LLM Raw Response:', JSON.stringify(rawPayload));
     const content = rawPayload.choices?.[0]?.message?.content ?? '';
-    if (!content?.trim()) {
-      console.warn('[YAC] LLM content empty');
-      throw new Error('LLM returned empty content.');
-    }
     const parsed = parseStructuredAnalysis(content);
     const normalized = normalizeStructuredAnalysis(
       parsed,

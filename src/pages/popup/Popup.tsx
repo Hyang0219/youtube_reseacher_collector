@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import {
   ApiSettings,
   Capture,
-  ProviderOption,
   clearCaptures,
   loadCaptures,
   loadSettings,
@@ -41,12 +40,6 @@ const getInitialFormValue = (capture: Capture): FormStateValue => ({
   mode: capture.mode ?? 'baseline'
 });
 
-const DEFAULT_TARGET_LANGUAGE: ApiSettings['targetLanguage'] = 'english';
-const DEFAULT_PROVIDER: ProviderOption = 'ai-builder';
-
-const PROVIDER_HELPER = 'AI Builder runs Gemini 2.5 + DeepSeek in the backend for every capture.';
-const PROVIDER_PLACEHOLDER = 'sk_...';
-
 const Popup: React.FC = () => {
   const [captures, setCaptures] = useState<Capture[]>([]);
   const [formState, setFormState] = useState<Record<string, FormStateValue>>({});
@@ -58,12 +51,8 @@ const Popup: React.FC = () => {
   useEffect(() => {
     loadCaptures().then(setCaptures);
     loadSettings().then((s) => {
-        setSettings({
-          targetLanguage: s.targetLanguage ?? DEFAULT_TARGET_LANGUAGE,
-          provider: s.provider ?? DEFAULT_PROVIDER,
-          tokens: s.tokens ?? {},
-          ...s
-        });
+        // Default to english if not set
+        setSettings({ targetLanguage: 'english', ...s });
     });
 
         const storageChangeListener = (
@@ -92,25 +81,14 @@ const Popup: React.FC = () => {
     });
   }, [captures]);
 
-  const persistSettings = async (updates: Partial<ApiSettings>) => {
-    const next: ApiSettings = {
-      ...settings,
-      ...updates,
-      tokens: updates.tokens ?? settings.tokens ?? {}
-    };
-    setSettings(next);
-    setSaving(true);
-    await saveSettings(next);
-    setSaving(false);
-  };
-
   const handleLanguageChange = (lang: 'original' | 'english') => {
-    void persistSettings({ targetLanguage: lang });
-  };
-
-  const handleProviderTokenChange = (value: string) => {
-    const nextTokens = { ...(settings.tokens ?? {}), [DEFAULT_PROVIDER]: value };
-    void persistSettings({ tokens: nextTokens, provider: DEFAULT_PROVIDER });
+      const updated = { 
+          ...settings, 
+          targetLanguage: lang
+      };
+      setSettings(updated);
+      setSaving(true);
+      saveSettings(updated).then(() => setSaving(false));
   };
 
   const toggleSelection = (id: string) => {
@@ -141,6 +119,14 @@ const Popup: React.FC = () => {
     URL.revokeObjectURL(url);
   };
 
+  const handleSaveSettings = async (key: keyof ApiSettings, value: any) => {
+    const updated: ApiSettings = { ...settings, [key]: value };
+    setSettings(updated);
+    setSaving(true);
+    await saveSettings(updated);
+    setSaving(false);
+  };
+
   const handleClear = async () => {
     if (selectedIds.size > 0) {
         // Clear only selected
@@ -163,10 +149,6 @@ const Popup: React.FC = () => {
       const current = prev[id] ?? { userIntent: '', mode: 'baseline' };
       return { ...prev, [id]: { ...current, ...updates } };
     });
-  };
-
-  const handleModeSuggestion = (captureId: string, mode: RunMode) => {
-    updateFormState(captureId, { mode });
   };
 
   const handleRefine = (capture: Capture) => {
@@ -227,14 +209,9 @@ const Popup: React.FC = () => {
       <div className="mt-1 flex flex-wrap items-center gap-1 text-[10px] text-slate-300">
         <span className="text-[10px] font-semibold text-slate-400">Next modes:</span>
         {modes.map((mode) => (
-          <button
-            key={`${captureId}-mode-${run.run_mode}-${mode}`}
-            type="button"
-            className="rounded-full border border-white/20 px-3 py-0.5 text-[10px] transition hover:bg-white/10"
-            onClick={() => handleModeSuggestion(captureId, mode)}
-          >
+          <span key={`${captureId}-mode-${run.run_mode}-${mode}`} className="rounded-full border border-white/20 px-2 py-0.5 text-[10px]">
             {mode}
-          </button>
+          </span>
         ))}
       </div>
     );
@@ -312,16 +289,15 @@ const Popup: React.FC = () => {
       <section className="space-y-2">
         <h2 className="text-xs font-semibold uppercase tracking-wider text-slate-400">Settings</h2>
         
-        <label className="flex flex-col gap-1 text-xs">
-          <span>Please Enter Your AI Builder Key</span>
+        <label className="flex flex-col text-xs">
+          <span>AI Builder Token</span>
           <input
             className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-xs text-white"
             type="password"
-            placeholder={PROVIDER_PLACEHOLDER}
-            value={settings.tokens?.[DEFAULT_PROVIDER] ?? ''}
-            onChange={(event) => handleProviderTokenChange(event.target.value)}
+            placeholder="sk_..."
+            value={settings.aiBuilderToken ?? ''}
+            onChange={(event) => handleSaveSettings('aiBuilderToken', event.target.value)}
           />
-          <span className="text-[10px] text-slate-400">{PROVIDER_HELPER}</span>
         </label>
 
         <div className="flex flex-col gap-1 text-xs">
@@ -374,7 +350,13 @@ const Popup: React.FC = () => {
                   <span className="truncate max-w-[150px]" title={capture.videoTitle}>{capture.videoTitle}</span>
                   </div>
                   {capture.status === 'pending' ? (
-                      <div className="mt-1 text-[10px] text-yellow-400">Analysing...</div>
+                      <div className="mt-1 flex items-center gap-2 text-yellow-400">
+                          <svg className="animate-spin h-3 w-3" viewBox="0 0 24 24">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                          </svg>
+                          <span className="text-[10px]">Analysing...</span>
+                      </div>
                   ) : capture.status === 'failed' ? (
                       <div className="mt-1 flex items-center gap-2 text-red-400">
                           <span className="text-[10px]">⚠ Processing Failed</span>
@@ -386,6 +368,15 @@ const Popup: React.FC = () => {
                   {capture.id !== 'placeholder' && renderRuns(capture)}
                   {capture.id !== 'placeholder' && (
                     <div className="mt-3 space-y-2 text-[10px]">
+                        <label className="flex flex-col gap-1">
+                          <span className="text-slate-400">What would I like to explore next?</span>
+                          <input
+                            className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-[10px] text-white"
+                            type="text"
+                            value={formValue.userIntent}
+                            onChange={(event) => updateFormState(capture.id, { userIntent: event.target.value })}
+                          />
+                        </label>
                       <label className="flex flex-col gap-1">
                         <span className="text-slate-400">Mode</span>
                         <select
@@ -400,28 +391,19 @@ const Popup: React.FC = () => {
                           ))}
                         </select>
                       </label>
-                      <label className="flex flex-col gap-1">
-                        <span className="text-slate-400">What would I like to explore next?</span>
-                        <input
-                          className="rounded-md border border-white/20 bg-white/5 px-2 py-1 text-[10px] text-white"
-                          type="text"
-                          value={formValue.userIntent}
-                          onChange={(event) => updateFormState(capture.id, { userIntent: event.target.value })}
-                        />
-                      </label>
                       <button
                         className="w-full flex items-center justify-center gap-1 rounded-md border border-white/30 bg-white/5 px-2 py-1 text-[10px] font-semibold uppercase tracking-wide text-white transition hover:bg-white/10 disabled:opacity-40"
                         type="button"
                         disabled={capture.status === 'pending' || isRefining}
                         onClick={() => handleRefine(capture)}
                       >
-                        {(capture.status === 'pending' || isRefining) && (
+                        {isRefining && (
                           <svg className="h-3 w-3 animate-spin" viewBox="0 0 24 24">
                             <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none"></circle>
                             <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
                           </svg>
                         )}
-                        {capture.status === 'pending' ? 'Analysing…' : isRefining ? 'Refining…' : 'Refine Analysis'}
+                        {isRefining ? 'Refining…' : 'Refine Analysis'}
                       </button>
                     </div>
                   )}
