@@ -1,21 +1,20 @@
 # .gitignore
 node_modules
 dist
+ai_dev_tools/
 .DS_Store
 .env
 /tmp
 .idea
 *.log
-.env
-
 # Testing
 .playwright/
-test_results/
+.test_results/
+test-results/
 .test-user-data-*/
 playwright-report/
 blob-report/
 .npm-cache/
 captures.md
-ai_dev_tools/
 tasks/
 tests/

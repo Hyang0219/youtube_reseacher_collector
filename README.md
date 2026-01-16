@@ -9,9 +9,7 @@ A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" 
 -   **Instant Capture:** Press `⌥ + C` (Option + C on Mac) or `Alt + C` to capture the current moment.
 -   **Smart Context:** Automatically extracts the last **30 seconds of transcript** and **video description** leading up to your capture.
 -   **Robust Fetching:** Uses a multi-layered strategy (Direct Fetch > Innertube API > DOM Scraping) to ensure transcripts are found even on complex video pages.
--   **Dual-Model Intelligence:** 
-    -   **English:** Uses **Gemini 2.5 Pro** for deep reasoning and structured insights.
-    -   **Original Language:** Uses **DeepSeek** for fast and accurate summarization.
+-   **AI Builder Intelligence:** Combines **Gemini 3 Flash** for English reasoning with **DeepSeek** for original-language summarization.
 -   **Structured Runs:** Each capture now stores the source metadata once plus an ordered list of AI runs (baseline + refinements). Every run records its `mode`, provided intent (or “Not Provided”), summary, background, and follow-ups so you can compare the base insight to every intent-driven rerun without duplicating transcript data.
 -   **Live Progress:** Real-time status updates ("Analysing...") in the popup while AI processing is in progress.
 -   **Multi-Select Export:** Select specific "Aha!" moments to copy as Markdown or download as a `.md` report.
@@ -49,6 +47,10 @@ A Chrome Extension for "Zero-Friction" knowledge capture. Instantly save "Aha!" 
     *   *Note: You must be logged into YouTube for the most reliable transcript access.*
 4.  **Review:** Open the extension popup to see your list of captures.
 5.  **Export:** Click "Copy MD" or "Download" to save your notes.
+
+## ⚙️ Settings
+
+Open the popup to paste your AI Builder key; that’s the only provider the extension now uses. It always runs the Gemini 2.5 + DeepSeek flow, so no additional configuration is required.
 
 ## 📁 Project Structure
 
