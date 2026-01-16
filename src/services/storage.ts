@@ -18,8 +18,12 @@ export type Capture = {
   mode?: RunMode;
 };
 
+export type LegacyProviderKey = 'ai-builder' | 'openai' | 'gemini';
+export type ProviderOption = 'ai-builder';
+
 export type ApiSettings = {
-  aiBuilderToken?: string;
+  provider?: ProviderOption;
+  tokens?: Partial<Record<LegacyProviderKey, string>>;
   targetLanguage?: 'original' | 'english';
   // Deprecated
   llmKey?: string;
